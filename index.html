@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BDS SoldaPRO: Calculadora Experta</title>
+    <!-- Carga de Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Configuración para usar la paleta de colores (Rojo, Amarillo, Negro/Gris) -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'bds-red': '#E3001B',       // Rojo principal
+                        'bds-yellow': '#FFCC00',    // Amarillo para contraste/alerta
+                        'bds-dark-bg': '#1a1a1a',   // Fondo principal oscuro
+                        'bds-gray': '#4a4a4a',      // Elementos grises (cards/borders)
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Estilos generales para un entorno de taller (legibilidad y contraste) */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #1a1a1a;
+            color: #ffffff;
+            transition: background-color 0.3s, color 0.3s;
+        }
+        .app-container {
+            max-width: 420px; /* Tamaño típico de un móvil/herramienta de mano */
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+        }
+        .visual-selector {
+            border: 2px solid #4a4a4a;
+            transition: all 0.2s ease-in-out;
+        }
+        .visual-selector:hover {
+            border-color: #FFCC00;
+            transform: translateY(-2px);
+        }
+        .selected {
+            border-color: #E3001B !important;
+            background-color: rgba(227, 0, 27, 0.2);
+            transform: scale(1.02);
+        }
+        /* Iconos de Material Base (usando FontAwesome - cargado en el HTML) */
+        .material-icon-acero::before { content: '🏗️'; } /* Edificio/Estructura */
+        .material-icon-inox::before { content: '✨'; }  /* Brillo/Pulido */
+
+        /* Estilos específicos para la pantalla de resultados */
+        .result-card {
+            background-color: #2c2c2c;
+            border-left: 5px solid #E3001B;
+        }
+        .info-icon:hover + .info-note {
+            display: block;
+            opacity: 1;
+        }
+        .info-note {
+            display: none;
+            position: absolute;
+            z-index: 10;
+            top: 100%;
+            right: 0;
+            width: 200px;
+            background: #FFCC00;
+            color: #1a1a1a;
+            padding: 8px;
+            border-radius: 4px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+    </style>
+    <!-- Iconos de Font Awesome para una apariencia industrial -->
+    <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
+</head>
+<body class="p-4 flex flex-col items-center min-h-screen">
+
+    <!-- BDS SoldaPRO (Simulación de la App) -->
+    <div id="app" class="app-container w-full h-auto min-h-[600px] bg-bds-dark-bg p-6 rounded-2xl flex flex-col justify-between">
+        
+        <!-- Encabezado de la App -->
+        <div class="text-center mb-6">
+            <h1 class="text-2xl font-black text-bds-red border-b-2 border-bds-yellow pb-2">BDS SoldaPRO</h1>
+            <p class="text-sm text-gray-400 mt-1">Calculadora Experta (v1.0 - OFFLINE)</p>
+        </div>
+
+        <!-- Vista Principal: Selección de Parámetros -->
+        <div id="selection-view" class="space-y-6 flex-grow">
+            
+            <!-- 1. Selección de Proceso -->
+            <div class="bg-bds-gray p-4 rounded-xl">
+                <h3 class="text-lg font-bold mb-3 text-bds-yellow">1. Proceso de Soldadura</h3>
+                <div class="flex justify-between gap-3">
+                    <button class="visual-selector flex-1 text-center p-3 rounded-lg flex flex-col items-center" data-process="SMAW">
+                        <i class="fas fa-burn text-2xl mb-1 text-white"></i>
+                        <span class="text-xs">Electrodo (SMAW)</span>
+                    </button>
+                    <button class="visual-selector flex-1 text-center p-3 rounded-lg flex flex-col items-center" data-process="GMAW">
+                        <i class="fas fa-spray-can text-2xl mb-1 text-white"></i>
+                        <span class="text-xs">MIG/MAG (GMAW)</span>
+                    </button>
+                    <button class="visual-selector flex-1 text-center p-3 rounded-lg flex flex-col items-center" data-process="GTAW">
+                        <i class="fas fa-fire-alt text-2xl mb-1 text-white"></i>
+                        <span class="text-xs">TIG (GTAW)</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- 2. Material Base -->
+            <div class="bg-bds-gray p-4 rounded-xl">
+                <h3 class="text-lg font-bold mb-3 text-bds-yellow">2. Material Base</h3>
+                <div class="flex justify-between gap-3">
+                    <button class="visual-selector flex-1 text-center p-3 rounded-lg flex flex-col items-center" data-material="AC">
+                        <span class="material-icon-acero text-2xl mb-1"></span>
+                        <span class="text-xs">Acero Carbono</span>
+                    </button>
+                    <button class="visual-selector flex-1 text-center p-3 rounded-lg flex flex-col items-center" data-material="IN">
+                        <span class="material-icon-inox text-2xl mb-1"></span>
+                        <span class="text-xs">Acero Inoxidable</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- 3. Grosor del Material -->
+            <div class="bg-bds-gray p-4 rounded-xl">
+                <h3 class="text-lg font-bold mb-3 text-bds-yellow">3. Grosor (mm)</h3>
+                <div id="thickness-selectors" class="grid grid-cols-4 gap-2">
+                    <!-- Botones generados por JS -->
+                </div>
+            </div>
+
+            <!-- 4. Posición de Soldadura -->
+            <div class="bg-bds-gray p-4 rounded-xl">
+                <h3 class="text-lg font-bold mb-3 text-bds-yellow">4. Posición</h3>
+                <div class="grid grid-cols-4 gap-2">
+                    <button class="visual-selector flex-1 text-center p-3 rounded-lg" data-position="1">Plana (1G/1F)</button>
+                    <button class="visual-selector flex-1 text-center p-3 rounded-lg" data-position="2">Horiz. (2G/2F)</button>
+                    <button class="visual-selector flex-1 text-center p-3 rounded-lg" data-position="3">Vert. (3G/3F)</button>
+                    <button class="visual-selector flex-1 text-center p-3 rounded-lg" data-position="4">Sobrecabeza (4G/4F)</button>
+                </div>
+            </div>
+            
+            <!-- Botón de Acción (Oculto hasta la selección completa) -->
+            <button id="calculate-btn" class="w-full py-4 text-xl font-bold bg-bds-red text-white rounded-xl shadow-lg hover:bg-bds-red/80 transition-opacity" style="opacity: 0.5;" disabled>
+                CALCULAR PARÁMETROS
+            </button>
+        </div>
+
+        <!-- Vista de Resultados (Oculta inicialmente) -->
+        <div id="results-view" class="space-y-6 hidden flex-grow">
+            <h2 class="text-xl font-bold text-center text-bds-yellow">✅ Parámetros Óptimos BDS</h2>
+            
+            <!-- Card de Amperaje Principal -->
+            <div class="result-card p-4 rounded-xl flex items-center justify-between">
+                <div>
+                    <p class="text-3xl font-extrabold text-bds-red" id="result-amperage">120A - 150A</p>
+                    <p class="text-sm text-gray-300">Rango de Amperaje Óptimo</p>
+                </div>
+                <i class="fas fa-bolt text-4xl text-bds-yellow"></i>
+            </div>
+
+            <!-- Detalles del Consumible y Polaridad -->
+            <div class="grid grid-cols-2 gap-4">
+                <div class="result-card p-4 rounded-xl">
+                    <p class="text-sm font-semibold text-bds-yellow">Consumible</p>
+                    <p class="text-lg font-bold text-white" id="result-electrode">E7018</p>
+                    <p class="text-sm text-gray-400" id="result-diameter">1/8" (3.2mm)</p>
+                </div>
+                <div class="result-card p-4 rounded-xl">
+                    <p class="text-sm font-semibold text-bds-yellow">Polaridad</p>
+                    <p class="text-lg font-bold text-white" id="result-polarity">DC+</p>
+                    <div class="relative inline-block">
+                        <i class="fas fa-info-circle text-bds-gray info-icon cursor-pointer"></i>
+                        <span class="info-note">La polaridad afecta la penetración y el depósito. Consulte el manual de su máquina.</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Detalles de Gas (MIG/TIG) -->
+            <div id="gas-detail-card" class="result-card p-4 rounded-xl hidden">
+                <h4 class="text-sm font-semibold text-bds-yellow mb-2">Protección Gaseosa</h4>
+                <p class="text-lg font-bold text-white" id="result-gas">Argón + CO2 (75/25)</p>
+                <p class="text-sm text-gray-400 mt-1" id="result-flow">Flujo: 15-20 CFH</p>
+            </div>
+
+            <!-- Notas Rápidas / Info de Seguridad -->
+            <div id="note-card" class="bg-bds-yellow p-3 rounded-xl text-bds-dark-bg">
+                <p class="font-bold">Nota Rápida:</p>
+                <p class="text-sm" id="result-note">...</p>
+            </div>
+
+            <!-- Botón de Reset -->
+            <button id="reset-btn" class="w-full py-3 text-lg font-bold bg-bds-gray text-white rounded-xl mt-4 hover:bg-bds-gray/80 transition">
+                ← Nueva Cálculo
+            </button>
+        </div>
+
+        <!-- Descargo de Responsabilidad (Fijo en la parte inferior) -->
+        <div class="text-xs text-center text-gray-500 mt-4 pt-4 border-t border-bds-gray">
+            Advertencia: Use siempre Equipo de Protección Personal (EPP). SoldaPRO es una herramienta de referencia. Los parámetros finales dependen de la condición de la máquina y habilidad del soldador.
+        </div>
+    </div>
+
+    <script>
+        // Variables de estado de la aplicación
+        const state = {
+            process: null,
+            material: null,
+            thickness: null,
+            position: null,
+        };
+
+        // Base de Datos OFFLINE de Parámetros (Ajustada para Bolivia/LATAM)
+        // Estructura: [Proceso][Material][Grosor]
+        const WELD_DB = {
+            'SMAW': {
+                'AC': {
+                    '1.5': { electrode: 'E6013', diameter: '5/64" (2.0mm)', amperage: '45A - 65A', polarity: 'AC/DC-', notes: 'Ideal para láminas y pases de raíz. Facilita la soldadura en todas las posiciones.' },
+                    '3.0': { electrode: 'E6013', diameter: '3/32" (2.4mm)', amperage: '70A - 90A', polarity: 'AC/DC-', notes: 'El electrodo E6013 es versátil para uso general y máquinas de bajo amperaje.' },
+                    '6.0': { electrode: 'E7018', diameter: '1/8" (3.2mm)', amperage: '110A - 140A', polarity: 'DC+', notes: 'Alta resistencia y ductilidad. Requiere un arco corto y almacenamiento seco (Horno).'},
+                    '9.0': { electrode: 'E7018', diameter: '5/32" (4.0mm)', amperage: '150A - 190A', polarity: 'DC+', notes: 'Asegure precalentamiento y limpieza de la superficie para espesores mayores.'},
+                    '12.0': { electrode: 'E7018', diameter: '3/16" (4.8mm)', amperage: '200A - 250A', polarity: 'DC+', notes: 'Usar pases múltiples. Mantener la máquina bien calibrada para estos amperajes.'},
+                },
+                'IN': {
+                    // El SMAW en INOX es menos común para principiantes, pero se incluye un básico
+                    '3.0': { electrode: 'E308L-16', diameter: '3/32" (2.4mm)', amperage: '60A - 80A', polarity: 'DC+', notes: 'Usar el mínimo calor posible para evitar la deformación y la corrosión intergranular.' },
+                }
+            },
+            'GMAW': {
+                'AC': {
+                    '1.5': { electrode: 'ER70S-6', diameter: '0.8mm', amperage: '80A - 110A', polarity: 'DC+', gas: 'Argón + CO2 (75/25)', flow: '12-15 CFH', notes: 'Utilizar gas de mezcla (75% Argón, 25% CO2) para mejor transferencia y penetración.' },
+                    '3.0': { electrode: 'ER70S-6', diameter: '0.9mm', amperage: '120A - 150A', polarity: 'DC+', gas: 'Argón + CO2 (75/25)', flow: '15-20 CFH', notes: 'Mantener la extensión del alambre (stick-out) consistente para un arco estable.' },
+                    '6.0': { electrode: 'ER70S-6', diameter: '1.0mm', amperage: '180A - 220A', polarity: 'DC+', gas: 'Argón + CO2 (75/25)', flow: '20-25 CFH', notes: 'Para este espesor, considerar la transferencia en spray si la máquina lo permite.' },
+                },
+                'IN': {
+                    '1.5': { electrode: 'ER308L', diameter: '0.8mm', amperage: '70A - 90A', polarity: 'DC+', gas: 'Argón Puro', flow: '10-15 CFH', notes: 'El Argón puro es clave. Evitar el CO2 ya que agrega carbono y reduce la resistencia a la corrosión.' },
+                    '3.0': { electrode: 'ER308L', diameter: '0.9mm', amperage: '100A - 130A', polarity: 'DC+', gas: 'Argón Puro', flow: '15-20 CFH', notes: 'Control de pulso (si disponible) ayuda a reducir la entrada de calor.' },
+                }
+            },
+            'GTAW': {
+                'AC': {
+                    '1.5': { electrode: 'EWP (Puro)', diameter: '1/16" (1.6mm)', amperage: '60A - 80A', polarity: 'AC', gas: 'Argón Puro', flow: '8-12 CFH', notes: 'Necesario para la limpieza del óxido de aluminio. Antorcha enfriada por aire o agua.' },
+                    '3.0': { electrode: 'EWP (Puro)', diameter: '3/32" (2.4mm)', amperage: '100A - 140A', polarity: 'AC', gas: 'Argón Puro', flow: '10-15 CFH', notes: 'Mantener la punta del tungsteno limpia y afilada para un arco concentrado.' },
+                },
+                'IN': {
+                    '1.5': { electrode: 'EWTh-2 (2% Torio)', diameter: '1/16" (1.6mm)', amperage: '40A - 60A', polarity: 'DC-', gas: 'Argón Puro', flow: '8-12 CFH', notes: 'El 2% Torio es común para DC. Usar DC- (polaridad directa) para máxima penetración.' },
+                    '3.0': { electrode: 'EWTh-2 (2% Torio)', diameter: '3/32" (2.4mm)', amperage: '70A - 100A', polarity: 'DC-', gas: 'Argón Puro', flow: '10-15 CFH', notes: 'El relleno debe ser ER308L. Evitar la contaminación de la piscina de soldadura.' },
+                }
+            }
+        };
+        
+        // Elementos del DOM
+        const selectionView = document.getElementById('selection-view');
+        const resultsView = document.getElementById('results-view');
+        const calculateBtn = document.getElementById('calculate-btn');
+        const thicknessSelectors = document.getElementById('thickness-selectors');
+        const gasDetailCard = document.getElementById('gas-detail-card');
+        
+        // Datos fijos para los selectores de grosor
+        const thicknessData = [1.5, 3.0, 6.0, 9.0, 12.0];
+
+        // --- FUNCIONES DE INICIALIZACIÓN Y LÓGICA ---
+
+        // 1. Renderizar selectores de grosor (botones)
+        function renderThicknessSelectors() {
+            thicknessSelectors.innerHTML = '';
+            thicknessData.forEach(t => {
+                const btn = document.createElement('button');
+                btn.className = 'visual-selector text-center p-3 rounded-lg text-xs font-semibold';
+                btn.textContent = t + ' mm';
+                btn.dataset.thickness = t;
+                btn.addEventListener('click', handleSelection);
+                thicknessSelectors.appendChild(btn);
+            });
+        }
+
+        // 2. Manejador de Clicks en Selectores
+        function handleSelection(event) {
+            const target = event.currentTarget;
+            let key, value;
+
+            if (target.dataset.process) {
+                key = 'process';
+                value = target.dataset.process;
+            } else if (target.dataset.material) {
+                key = 'material';
+                value = target.dataset.material;
+            } else if (target.dataset.thickness) {
+                key = 'thickness';
+                value = parseFloat(target.dataset.thickness);
+            } else if (target.dataset.position) {
+                key = 'position';
+                value = parseInt(target.dataset.position);
+            } else {
+                return;
+            }
+
+            // Actualizar el estado
+            state[key] = value;
+
+            // Manejar la clase 'selected'
+            document.querySelectorAll(`[data-${key}]`).forEach(el => {
+                el.classList.remove('selected');
+            });
+            target.classList.add('selected');
+
+            // Actualizar el estado del botón CALCULAR
+            checkCalculationReadiness();
+        }
+
+        // 3. Verificar si todos los parámetros necesarios están seleccionados
+        function checkCalculationReadiness() {
+            const isReady = state.process && state.material && state.thickness && state.position;
+            
+            if (isReady) {
+                calculateBtn.disabled = false;
+                calculateBtn.style.opacity = '1.0';
+                calculateBtn.classList.add('animate-pulse');
+            } else {
+                calculateBtn.disabled = true;
+                calculateBtn.style.opacity = '0.5';
+                calculateBtn.classList.remove('animate-pulse');
+            }
+        }
+
+        // 4. Lógica de Cálculo y Mostrar Resultados
+        function displayResults() {
+            // Buscar los datos en la base de datos interna
+            const resultData = WELD_DB[state.process]?.[state.material]?.[state.thickness.toFixed(1)];
+
+            if (!resultData) {
+                // Manejo de casos no encontrados
+                alertUser("Error: No hay datos disponibles para esta combinación. ¡Intenta con otro grosor o material!");
+                return;
+            }
+
+            // Actualizar la vista de resultados
+            document.getElementById('result-amperage').textContent = resultData.amperage;
+            document.getElementById('result-electrode').textContent = resultData.electrode;
+            document.getElementById('result-diameter').textContent = resultData.diameter;
+            document.getElementById('result-polarity').textContent = resultData.polarity;
+            document.getElementById('result-note').textContent = resultData.notes;
+
+            // Manejar la visualización de Gas/Flujo (solo GMAW y GTAW)
+            if (state.process === 'GMAW' || state.process === 'GTAW') {
+                gasDetailCard.classList.remove('hidden');
+                document.getElementById('result-gas').textContent = resultData.gas || 'No aplica';
+                document.getElementById('result-flow').textContent = `Flujo: ${resultData.flow || 'N/A'}`;
+            } else {
+                gasDetailCard.classList.add('hidden');
+            }
+
+            // Transicionar vistas
+            selectionView.classList.add('hidden');
+            resultsView.classList.remove('hidden');
+        }
+        
+        // 5. Función de Alerta personalizada (sustituye a alert())
+        function alertUser(message) {
+            console.error(message);
+            const appContainer = document.getElementById('app');
+            let alertBox = document.getElementById('custom-alert');
+
+            if (!alertBox) {
+                alertBox = document.createElement('div');
+                alertBox.id = 'custom-alert';
+                alertBox.className = 'fixed top-0 left-0 w-full h-full flex items-center justify-center bg-black bg-opacity-70 z-50';
+                alertBox.innerHTML = `
+                    <div class="bg-bds-yellow text-bds-dark-bg p-6 rounded-lg max-w-sm w-11/12 shadow-2xl">
+                        <p class="font-bold text-lg mb-4">⚠️ Alerta SoldaPRO</p>
+                        <p id="alert-message" class="mb-6"></p>
+                        <button id="alert-close" class="w-full py-2 bg-bds-red text-white rounded font-semibold hover:bg-bds-red/90 transition">Entendido</button>
+                    </div>
+                `;
+                appContainer.appendChild(alertBox);
+                document.getElementById('alert-close').onclick = () => alertBox.classList.add('hidden');
+            }
+            document.getElementById('alert-message').textContent = message;
+            alertBox.classList.remove('hidden');
+        }
+
+        // 6. Función de Reset
+        function resetApp() {
+            Object.keys(state).forEach(key => state[key] = null);
+            document.querySelectorAll('.visual-selector').forEach(el => el.classList.remove('selected'));
+            checkCalculationReadiness();
+            selectionView.classList.remove('hidden');
+            resultsView.classList.add('hidden');
+            gasDetailCard.classList.add('hidden');
+        }
+
+        // --- EVENT LISTENERS ---
+        document.addEventListener('DOMContentLoaded', () => {
+            renderThicknessSelectors(); // Inicializa los botones de grosor
+
+            // Asignar listeners a todos los selectores (Proceso, Material, Posición)
+            document.querySelectorAll('.visual-selector').forEach(btn => {
+                // Solo añadir el listener si aún no lo tiene (los de grosor ya se añadieron)
+                if (!btn.dataset.thickness) {
+                    btn.addEventListener('click', handleSelection);
+                }
+            });
+
+            // Listener para el botón de calcular
+            calculateBtn.addEventListener('click', displayResults);
+
+            // Listener para el botón de reset
+            document.getElementById('reset-btn').addEventListener('click', resetApp);
+            
+            // Inicializar el estado de cálculo
+            checkCalculationReadiness();
+        });
+    </script>
+    
+</body>
+</html>
